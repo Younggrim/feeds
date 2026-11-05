@@ -1,0 +1,27 @@
+{
+  "_note": "Videos whose title contains any of these words or phrases (case-insensitive, whole words) are hidden. Add or remove freely.",
+  "blockedWords": [
+    "gossip",
+    "affair",
+    "affairs",
+    "cheating",
+    "cheated",
+    "divorce",
+    "divorced",
+    "divorcing",
+    "sex",
+    "sexy",
+    "sexual",
+    "nsfw",
+    "onlyfans",
+    "hookup",
+    "scandal",
+    "celebrity drama",
+    "bikini",
+    "lingerie",
+    "thirst trap"
+  ],
+  "blockedChannels": [],
+  "maxAgeDays": 21,
+  "maxPerChannel": 10
+}
