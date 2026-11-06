@@ -64,6 +64,20 @@
   .empty, .note { color: var(--muted); text-align: center; padding: 40px 0; }
   .note { padding: 16px 0 0; font-size: 13px; }
   @media (max-width: 380px) { .thumb { width: 128px; } .title { font-size: 14px; } }
+  #player { position: fixed; inset: 0; z-index: 20; background: #000; display: none;
+    flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  #player.open { display: flex; }
+  #player .bar { display: flex; gap: 8px; align-items: center; padding: 10px 12px; }
+  #player .bar button, #player .bar a { font: inherit; font-size: 15px; color: #fff; background: rgba(255,255,255,.14);
+    border: 0; border-radius: 10px; padding: 8px 12px; text-decoration: none; cursor: pointer; }
+  #player .bar .grow { flex: 1; }
+  #player .stage { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  #player iframe { width: 100%; max-width: 1100px; aspect-ratio: 16/9; border: 0; background: #000; }
+  #player.short iframe { width: auto; height: 100%; max-height: 86vh; aspect-ratio: 9/16; }
+  #player .info { color: #eee; padding: 12px 16px 18px; max-width: 1100px; margin: 0 auto; width: 100%; }
+  #player .info .t { font-weight: 600; font-size: 16px; }
+  #player .info .c { color: #aaa; font-size: 13px; margin-top: 4px; }
+  body.playing { overflow: hidden; }
 </style>
 </head>
 <body>
@@ -81,6 +95,15 @@
     <button class="chip" id="markAll" aria-pressed="false">Mark all watched</button>
   </div>
 </header>
+<div id="player" role="dialog" aria-modal="true" aria-label="Video player">
+  <div class="bar">
+    <button id="pClose">✕ Close</button><span class="grow"></span>
+    <button id="pNext">Next ›</button>
+    <a id="pOpen" target="_blank" rel="noopener">Open in YouTube</a>
+  </div>
+  <div class="stage"><iframe id="pFrame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+  <div class="info"><div class="t" id="pTitle"></div><div class="c" id="pChan"></div></div>
+</div>
 <main id="list"><div class="empty">Loading…</div></main>
 <script>
 const store = {
@@ -153,8 +176,35 @@ $('fUnseen').onclick = () => { state.unseen = !state.unseen; store.set('unseen',
 $('fShorts').onclick = () => { state.hideShorts = !state.hideShorts; store.set('hideShorts', state.hideShorts); setChip('fShorts', state.hideShorts); render(); };
 $('markAll').onclick = () => { if (!confirm('Mark everything shown as watched?')) return;
   data.videos.forEach(v => seen.add(v.id)); saveSeen(); render(); };
+// Play inside the page instead of handing off to the YouTube app.
+let playing = null;
 $('list').addEventListener('click', e => { const a = e.target.closest('a.v'); if (!a) return;
-  seen.add(a.dataset.id); saveSeen(); a.classList.add('seen'); });
+  e.preventDefault(); play(a.dataset.id); });
+function play(id) {
+  const v = data.videos.find(x => x.id === id); if (!v) return;
+  playing = id; seen.add(id); saveSeen();
+  document.querySelector(`a.v[data-id="${id}"]`)?.classList.add('seen');
+  $('pFrame').src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1`;
+  $('pOpen').href = v.short ? `https://www.youtube.com/shorts/${id}` : `https://www.youtube.com/watch?v=${id}`;
+  $('pTitle').textContent = v.title;
+  $('pChan').textContent = (v.topic ? v.topic + ' · ' : '') + v.channel + ' · ' + ago(v.published);
+  $('player').classList.toggle('short', !!v.short);
+  $('player').classList.add('open'); document.body.classList.add('playing');
+  if (location.hash !== '#play') history.pushState(null, '', '#play');
+}
+function closePlayer(fromHistory) {
+  if (!playing) return;
+  $('pFrame').src = 'about:blank'; playing = null;
+  $('player').classList.remove('open'); document.body.classList.remove('playing');
+  if (!fromHistory && location.hash === '#play') history.back();
+}
+$('pClose').onclick = () => closePlayer(false);
+$('pNext').onclick = () => {
+  const ids = [...document.querySelectorAll('a.v')].map(a => a.dataset.id);
+  const next = ids[ids.indexOf(playing) + 1]; if (next) play(next); else closePlayer(false);
+};
+window.addEventListener('popstate', () => closePlayer(true));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePlayer(false); });
 function saveSeen() { const keep = new Set(data.videos.map(v => v.id)); seen = new Set([...seen].filter(id => keep.has(id))); store.set('seen', [...seen]); }
 
 async function load() {
