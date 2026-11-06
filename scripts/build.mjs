@@ -53,6 +53,7 @@ const results = await pool(channels.filter(c => !blockedChannels.has(c.id)), 8, 
     published: tag(e, 'published'),
     views: Number((e.match(/<media:statistics views="(\d+)"/) || [])[1] || 0),
     channel: ch.name,
+    category: ch.category || 'More',
     channelId: ch.id,
     handle: ch.handle,
   }))
@@ -69,6 +70,7 @@ await mkdir('site', { recursive: true });
 await writeFile('site/feed.json', JSON.stringify({
   updated: new Date().toISOString(),
   channelCount: channels.length,
+  categories: [...new Set(channels.map(c => c.category || 'More'))],
   missing: problems,
   videos,
 }));

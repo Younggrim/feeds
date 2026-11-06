@@ -41,6 +41,7 @@
   .chips::-webkit-scrollbar { display: none; }
   .chip { flex: none; font: inherit; font-size: 14px; border: 0; border-radius: 999px; padding: 6px 12px;
     background: var(--chip); color: var(--text); cursor: pointer; }
+  #cats .chip { font-weight: 600; }
   .chip[aria-pressed=true] { background: var(--chip-on); color: var(--chip-on-text); }
   main { max-width: 760px; margin: 0 auto; padding: 8px 16px 40px; }
   .day { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
@@ -71,6 +72,7 @@
     <input id="q" type="search" placeholder="Search titles" autocomplete="off">
     <select id="ch" aria-label="Channel"><option value="">All channels</option></select>
   </div>
+  <div class="chips" id="cats"></div>
   <div class="chips">
     <button class="chip" id="fNew" aria-pressed="false">New</button>
     <button class="chip" id="fUnseen" aria-pressed="false">Unwatched</button>
@@ -88,7 +90,8 @@ const $ = id => document.getElementById(id);
 let data = { videos: [] };
 let seen = new Set(store.get('seen', []));
 const lastVisit = store.get('lastVisit', 0);
-const state = { q: '', ch: store.get('channel', ''), onlyNew: false, unseen: store.get('unseen', false), hideShorts: store.get('hideShorts', true) };
+const ORDER = ['Faith', 'Sports', 'Tech & Privacy', 'Outdoors & Gear', 'Fun', 'Local', 'More'];
+const state = { q: '', cat: store.get('cat', ''), ch: store.get('channel', ''), onlyNew: false, unseen: store.get('unseen', false), hideShorts: store.get('hideShorts', true) };
 
 function ago(iso) {
   const s = (Date.now() - Date.parse(iso)) / 1000;
@@ -108,6 +111,7 @@ function render() {
   const q = state.q.toLowerCase();
   const vids = data.videos.filter(v =>
     (!state.hideShorts || !v.short) &&
+    (!state.cat || v.category === state.cat) &&
     (!state.ch || v.channelId === state.ch) &&
     (!state.unseen || !seen.has(v.id)) &&
     (!state.onlyNew || Date.parse(v.published) > lastVisit) &&
@@ -129,6 +133,17 @@ function render() {
   $('list').innerHTML = html;
 }
 
+function fillChannels() {
+  const chans = [...new Map(data.videos.filter(v => !state.cat || v.category === state.cat).map(v => [v.channelId, v.channel])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  $('ch').innerHTML = '<option value="">All channels</option>' + chans.map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join('');
+  if (!chans.some(([id]) => id === state.ch)) state.ch = '';
+  $('ch').value = state.ch;
+}
+$('cats').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return;
+  state.cat = b.dataset.cat; store.set('cat', state.cat);
+  $('cats').querySelectorAll('[data-cat]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  fillChannels(); window.scrollTo(0, 0); render(); });
 function setChip(id, on) { $(id).setAttribute('aria-pressed', String(on)); }
 $('q').addEventListener('input', e => { state.q = e.target.value; render(); });
 $('ch').addEventListener('change', e => { state.ch = e.target.value; store.set('channel', state.ch); render(); });
@@ -147,10 +162,10 @@ async function load() {
     data = await r.json();
   } catch { $('list').innerHTML = '<div class="empty">Couldn’t load the feed. Pull to refresh.</div>'; return; }
   $('updated').textContent = 'Updated ' + ago(data.updated);
-  const chans = [...new Map(data.videos.map(v => [v.channelId, v.channel])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  $('ch').innerHTML = '<option value="">All channels</option>' + chans.map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join('');
-  if (!chans.some(([id]) => id === state.ch)) state.ch = '';
-  $('ch').value = state.ch;
+  const cats = [...new Set(data.videos.map(v => v.category))].sort((a, b) => (ORDER.indexOf(a) + 99) % 99 - (ORDER.indexOf(b) + 99) % 99);
+  if (state.cat && !cats.includes(state.cat)) state.cat = '';
+  $('cats').innerHTML = ['', ...cats].map(c => `<button class="chip" data-cat="${esc(c)}" aria-pressed="${c === state.cat}">${c ? esc(c) : 'All'}</button>`).join('');
+  fillChannels();
   setChip('fUnseen', state.unseen); setChip('fShorts', state.hideShorts);
   render();
   store.set('lastVisit', Date.now());
