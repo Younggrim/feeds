@@ -84,7 +84,15 @@ try {
   } else console.log('Discover: skipped (no YT_API_KEY)');
 } catch (e) { console.log('Discover failed: ' + e.message); }
 
+// Stamp the page and feed with the commit so open copies of the page know to refresh.
+const build = (process.env.GITHUB_SHA || '').slice(0, 12);
+if (build) {
+  const page = await readFile('site/index.html', 'utf8');
+  await writeFile('site/index.html', page.replace("'__BUILD__'", `'${build}'`));
+}
+
 await writeFile('site/feed.json', JSON.stringify({
+  build,
   updated: new Date().toISOString(),
   channelCount: channels.length,
   categories: [...new Set(channels.map(c => c.category || 'More'))],

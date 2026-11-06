@@ -106,6 +106,7 @@
 </div>
 <main id="list"><div class="empty">Loading…</div></main>
 <script>
+const BUILD = '__BUILD__';
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -145,9 +146,8 @@ function render() {
   for (const v of vids) {
     const d = dayLabel(v.published);
     if (d !== day) { html += `<div class="day">${d}</div>`; day = d; }
-    const url = v.short ? `https://www.youtube.com/shorts/${v.id}` : `https://www.youtube.com/watch?v=${v.id}`;
     const isNew = lastVisit && Date.parse(v.published) > lastVisit && !seen.has(v.id);
-    html += `<a class="v${seen.has(v.id) ? ' seen' : ''}" href="${url}" data-id="${v.id}">
+    html += `<a class="v${seen.has(v.id) ? ' seen' : ''}" href="#v-${v.id}" data-id="${v.id}">
       <div class="thumb"><img loading="lazy" alt="" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg">
         ${v.short ? '<span class="badge">SHORT</span>' : ''}${isNew ? '<span class="new"></span>' : ''}</div>
       <div class="meta"><div class="title">${esc(v.title)}</div>
@@ -216,6 +216,10 @@ async function load() {
       data.videos = data.videos.concat(d.videos || []);
     } catch {}
   } catch { $('list').innerHTML = '<div class="empty">Couldn’t load the feed. Pull to refresh.</div>'; return; }
+  // A home-screen copy can keep running old code for days; reload once when a newer version is live.
+  if (data.build && BUILD !== '__BUILD__' && data.build !== BUILD && store.get('reloadedFor', '') !== data.build) {
+    store.set('reloadedFor', data.build); location.reload(); return;
+  }
   $('updated').textContent = 'Updated ' + ago(data.updated);
   const cats = [...new Set(data.videos.map(v => v.category))].sort((a, b) => (ORDER.indexOf(a) + 99) % 99 - (ORDER.indexOf(b) + 99) % 99);
   if (state.cat && !cats.includes(state.cat)) state.cat = '';
