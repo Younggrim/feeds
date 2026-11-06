@@ -90,7 +90,7 @@ const $ = id => document.getElementById(id);
 let data = { videos: [] };
 let seen = new Set(store.get('seen', []));
 const lastVisit = store.get('lastVisit', 0);
-const ORDER = ['Faith', 'Sports', 'Tech & Privacy', 'Outdoors & Gear', 'Fun', 'Local', 'More'];
+const ORDER = ['Faith', 'Sports', 'Tech & Privacy', 'Outdoors & Gear', 'Fun', 'Local', 'More', 'Discover'];
 const state = { q: '', cat: store.get('cat', ''), ch: store.get('channel', ''), onlyNew: false, unseen: store.get('unseen', false), hideShorts: store.get('hideShorts', true) };
 
 function ago(iso) {
@@ -111,7 +111,7 @@ function render() {
   const q = state.q.toLowerCase();
   const vids = data.videos.filter(v =>
     (!state.hideShorts || !v.short) &&
-    (!state.cat || v.category === state.cat) &&
+    (state.cat ? v.category === state.cat : !v.discover) &&
     (!state.ch || v.channelId === state.ch) &&
     (!state.unseen || !seen.has(v.id)) &&
     (!state.onlyNew || Date.parse(v.published) > lastVisit) &&
@@ -127,7 +127,7 @@ function render() {
       <div class="thumb"><img loading="lazy" alt="" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg">
         ${v.short ? '<span class="badge">SHORT</span>' : ''}${isNew ? '<span class="new"></span>' : ''}</div>
       <div class="meta"><div class="title">${esc(v.title)}</div>
-        <div class="sub">${esc(v.channel)} · ${ago(v.published)}</div></div></a>`;
+        <div class="sub">${v.topic ? `<b>${esc(v.topic)}</b> · ` : ''}${esc(v.channel)} · ${ago(v.published)}</div></div></a>`;
   }
   if (data.missing && data.missing.length) html += `<div class="note">No feed right now for: ${esc(data.missing.join(', '))}</div>`;
   $('list').innerHTML = html;
@@ -160,6 +160,10 @@ async function load() {
   try {
     const r = await fetch('feed.json?t=' + Date.now(), { cache: 'no-store' });
     data = await r.json();
+    try {
+      const d = await (await fetch('discover.json?t=' + Date.now(), { cache: 'no-store' })).json();
+      data.videos = data.videos.concat(d.videos || []);
+    } catch {}
   } catch { $('list').innerHTML = '<div class="empty">Couldn’t load the feed. Pull to refresh.</div>'; return; }
   $('updated').textContent = 'Updated ' + ago(data.updated);
   const cats = [...new Set(data.videos.map(v => v.category))].sort((a, b) => (ORDER.indexOf(a) + 99) % 99 - (ORDER.indexOf(b) + 99) % 99);

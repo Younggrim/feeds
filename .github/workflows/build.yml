@@ -28,6 +28,8 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/build.mjs
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

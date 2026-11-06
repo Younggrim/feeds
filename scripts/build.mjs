@@ -1,6 +1,7 @@
 // Builds site/feed.json from each channel's public YouTube RSS feed.
 // Run: node scripts/build.mjs   (Node 20+, no dependencies)
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { discover } from './discover.mjs';
 
 const channels = JSON.parse(await readFile('channels.json', 'utf8'));
 const filters = JSON.parse(await readFile('filters.json', 'utf8'));
@@ -67,6 +68,22 @@ const shortFlags = await pool(videos, 8, v => isShort(v.id));
 videos = videos.map((v, i) => ({ ...v, short: shortFlags[i] }));
 
 await mkdir('site', { recursive: true });
+
+// Discover tab (only when topics.json exists and a key is set or a fresh copy is live)
+let disc = null;
+try {
+  const topics = JSON.parse(await readFile('topics.json', 'utf8'));
+  disc = await discover({
+    key: process.env.YT_API_KEY, topics, blocked, blockedChannels,
+    subscribed: new Set(channels.map(c => c.id)), isShort,
+    liveUrl: 'https://feeds.macdwellings.com/discover.json',
+  });
+  if (disc) {
+    await writeFile('site/discover.json', JSON.stringify({ updated: disc.updated, videos: disc.videos }));
+    console.log(`Discover: ${disc.videos.length} videos${disc.reused ? ' (reused, still fresh)' : ' (refreshed)'}`);
+  } else console.log('Discover: skipped (no YT_API_KEY)');
+} catch (e) { console.log('Discover failed: ' + e.message); }
+
 await writeFile('site/feed.json', JSON.stringify({
   updated: new Date().toISOString(),
   channelCount: channels.length,

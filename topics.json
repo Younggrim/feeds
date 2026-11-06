@@ -1,0 +1,13 @@
+{
+  "_note": "Discover tab topics. Each query is searched on YouTube (strict SafeSearch, last 7 days), then filtered by filters.json. Edit freely.",
+  "minSubscribers": 10000,
+  "refreshHours": 6,
+  "topics": [
+    { "name": "Christian Metal", "query": "christian metal new song" },
+    { "name": "Steelers", "query": "Pittsburgh Steelers" },
+    { "name": "Apologetics", "query": "christian apologetics" },
+    { "name": "Bible Study", "query": "bible study teaching" },
+    { "name": "Home Lab", "query": "home lab raspberry pi self hosted" },
+    { "name": "Privacy & Security", "query": "online privacy security tips" }
+  ]
+}
