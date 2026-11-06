@@ -21,7 +21,10 @@
     "lingerie",
     "thirst trap"
   ],
-  "blockedChannels": [],
+  "blockedChannels": [
+    "UCPEXOtn9LpLbzVFnzu2Xq4A"
+  ],
   "maxAgeDays": 21,
-  "maxPerChannel": 10
+  "maxPerChannel": 10,
+  "_blockedChannelsNote": "blockedChannels holds channel IDs (UC…) that stay off the feed even if subscribed. UCPEXOtn9LpLbzVFnzu2Xq4A = NEUTORX."
 }
